@@ -15,6 +15,9 @@ export interface Recording {
   durationMillis: number;
   createdAt: string; // ISO timestamp
 
+  // Phase 6 — the book this entry belongs to (undefined = unassigned)
+  bookId?: string;
+
   // Phase 4 — speech-to-text
   transcript?: string;
   transcriptStatus: TranscriptStatus;

@@ -18,8 +18,8 @@ slice before the next begins.
 | 2 | System architecture | ✅ Complete (see plan) |
 | 3 | Voice capture (record / save / play / delete) | ✅ Complete |
 | 4 | Speech-to-text (upload / transcribe / display) | ✅ Complete |
-| 5 | **AI cleanup engine** (filler / grammar / title / structure) | ✅ Complete |
-| 6 | Book system | ⏳ |
+| 5 | AI cleanup engine (filler / grammar / title / structure) | ✅ Complete |
+| 6 | **Book system** (create / rename / delete / add entries) | ✅ Complete |
 | 7 | Beautiful reading experience | ⏳ |
 | 8 | Goals system | ⏳ |
 | 9 | Final MVP review | ⏳ |
@@ -167,3 +167,39 @@ src/screens/CaptureScreen.tsx           Auto-chain cleanup + manual polish
 ### Database
 No schema change — the page maps onto `notes.title` + `notes.body_clean`
 (already defined in `0001_init.sql`).
+
+---
+
+## Phase 6 — Book System (current)
+
+Entries now live inside **books** instead of one flat list. The app opens on a
+**Shelf** of books; tapping a book opens it and you record entries directly into
+it. The full pipeline (record → transcribe → polish) runs inside the book.
+
+### UI screens
+- **Bookshelf** — a 2-column grid of book covers (emoji + title + page count),
+  a dashed **New book** tile, and long-press → **Rename / Delete**.
+- **Book** — the book's entries plus the capture button; a **‹ Shelf** back button.
+
+Creating a book drops you straight into it to record. Deleting a book *unassigns*
+its entries (mirrors the schema's `ON DELETE SET NULL`) rather than destroying them.
+
+### Navigation
+Dependency-free: `App.tsx` holds a tiny route state (`shelf` | `book`). No
+navigation library needed for two screens — keeps the build simple.
+
+### New files / changes
+```
+src/types/book.ts                 Book type
+src/lib/bookStore.ts              create / rename / delete / list books
+src/lib/recordingStore.ts         + bookId, listRecordings(bookId), countByBook, unassignBook
+src/components/TextInputModal.tsx  Reusable create/rename modal
+src/screens/BookshelfScreen.tsx   The shelf (grid + CRUD)
+src/screens/BookScreen.tsx        A book's entries + capture (was CaptureScreen)
+App.tsx                           Shelf ⇄ Book navigation
+```
+
+### Database
+No schema change — `books` and `notes.book_id` already exist in `0001_init.sql`.
+Local data layer (`bookStore` / `recordingStore`) maps 1:1 to Supabase SDK calls:
+`insert/update/delete` on **books**, and updating **notes.book_id** for assignment.

@@ -1,11 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Alert,
-  FlatList,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRecorder } from '../hooks/useRecorder';
 import { usePlayer } from '../hooks/usePlayer';
 import { RecordButton } from '../components/RecordButton';
@@ -17,6 +11,7 @@ import {
   updateRecording,
 } from '../lib/recordingStore';
 import { Recording } from '../types/recording';
+import { Book } from '../types/book';
 import { colors } from '../theme/colors';
 import { formatDuration } from '../lib/format';
 import { transcribeAudio } from '../lib/transcription';
@@ -26,32 +21,32 @@ import { isCleanupConfigured, isTranscriptionConfigured } from '../config';
 // Ignore accidental taps that produce near-empty clips.
 const MIN_DURATION_MS = 500;
 
-export function CaptureScreen() {
+interface Props {
+  book: Book;
+  onBack: () => void;
+}
+
+export function BookScreen({ book, onBack }: Props) {
   const { status, durationMillis, start, stop } = useRecorder();
   const { playingId, play, stop: stopPlayback } = usePlayer();
-  const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [entries, setEntries] = useState<Recording[]>([]);
 
   const refresh = useCallback(async () => {
-    setRecordings(await listRecordings());
-  }, []);
+    setEntries(await listRecordings(book.id));
+  }, [book.id]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  // Transcript → Claude → store the structured page. Takes the text
-  // directly so it can be chained right after transcription.
+  // Transcript → Claude → store the structured page.
   const runCleanupFor = useCallback(
     async (id: string, text: string) => {
       await updateRecording(id, { cleanupStatus: 'processing', cleanupError: undefined });
       await refresh();
       try {
         const { title, body } = await cleanupText(text);
-        await updateRecording(id, {
-          title,
-          bodyClean: body,
-          cleanupStatus: 'ready',
-        });
+        await updateRecording(id, { title, bodyClean: body, cleanupStatus: 'ready' });
       } catch (e) {
         const message = e instanceof Error ? e.message : 'AI cleanup failed.';
         await updateRecording(id, { cleanupStatus: 'failed', cleanupError: message });
@@ -95,9 +90,9 @@ export function CaptureScreen() {
       } else if (status === 'recording') {
         const result = await stop();
         if (result && result.durationMillis >= MIN_DURATION_MS) {
-          const saved = await saveRecording(result.uri, result.durationMillis);
+          // Entry is saved directly into this book.
+          const saved = await saveRecording(result.uri, result.durationMillis, book.id);
           await refresh();
-          // Auto-transcribe when configured; otherwise leave a manual button.
           if (isTranscriptionConfigured()) {
             runTranscription(saved);
           }
@@ -107,7 +102,7 @@ export function CaptureScreen() {
       const message = e instanceof Error ? e.message : 'Something went wrong.';
       Alert.alert('Recording error', message);
     }
-  }, [status, start, stop, refresh, runTranscription]);
+  }, [status, start, stop, refresh, runTranscription, book.id]);
 
   const handlePlay = useCallback(
     (rec: Recording) => {
@@ -124,7 +119,7 @@ export function CaptureScreen() {
 
   const handleDelete = useCallback(
     (rec: Recording) => {
-      Alert.alert('Delete recording?', 'This cannot be undone.', [
+      Alert.alert('Delete entry?', 'This cannot be undone.', [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
@@ -145,17 +140,24 @@ export function CaptureScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.brand}>Books</Text>
-        <Text style={styles.tagline}>Speak your thoughts.</Text>
+        <Pressable onPress={onBack} hitSlop={10} style={styles.backBtn}>
+          <Text style={styles.backTxt}>‹ Shelf</Text>
+        </Pressable>
+        <Text style={styles.title}>
+          {book.coverEmoji ?? '📓'} {book.title}
+        </Text>
+        <Text style={styles.subtitle}>
+          {entries.length === 1 ? '1 page' : `${entries.length} pages`}
+        </Text>
       </View>
 
       <FlatList
-        data={recordings}
+        data={entries}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No recordings yet</Text>
+            <Text style={styles.emptyTitle}>This book is empty</Text>
             <Text style={styles.emptySub}>
               Tap the button below and start speaking.
             </Text>
@@ -164,7 +166,7 @@ export function CaptureScreen() {
         renderItem={({ item, index }) => (
           <RecordingItem
             recording={item}
-            index={recordings.length - index}
+            index={entries.length - index}
             isPlaying={playingId === item.id}
             onPlay={() => handlePlay(item)}
             onDelete={() => handleDelete(item)}
@@ -195,17 +197,24 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 8,
   },
-  brand: {
-    fontSize: 30,
+  backBtn: {
+    marginBottom: 6,
+  },
+  backTxt: {
+    fontSize: 16,
+    color: colors.accent,
+    fontWeight: '600',
+  },
+  title: {
+    fontSize: 26,
     fontWeight: '700',
     color: colors.ink,
-    letterSpacing: 0.3,
   },
-  tagline: {
-    fontSize: 15,
+  subtitle: {
+    fontSize: 14,
     color: colors.inkSoft,
     marginTop: 2,
   },
