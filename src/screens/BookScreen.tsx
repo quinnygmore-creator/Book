@@ -227,6 +227,7 @@ export function BookScreen({ book, onBack }: Props) {
           entries={entries}
           initialIndex={readerIndex}
           onClose={() => setReaderIndex(null)}
+          onUpdate={refresh}
         />
       )}
 

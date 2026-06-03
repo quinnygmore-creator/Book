@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -10,8 +10,13 @@ import { PatrickHand_400Regular } from '@expo-google-fonts/patrick-hand';
 import { BookshelfScreen } from './src/screens/BookshelfScreen';
 import { BookScreen } from './src/screens/BookScreen';
 import { GoalsScreen } from './src/screens/GoalsScreen';
+import { SignInScreen } from './src/screens/SignInScreen';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { Book } from './src/types/book';
 import { colors } from './src/theme/colors';
+import { useAuth } from './src/hooks/useAuth';
+import { isOnboarded, setOnboarded } from './src/lib/onboarding';
+import { fullSync } from './src/lib/sync';
 
 // Lightweight, dependency-free navigation between the shelf, an open
 // book, and the goals screen.
@@ -19,8 +24,9 @@ type Route = { name: 'shelf' } | { name: 'book'; book: Book } | { name: 'goals' 
 
 export default function App() {
   const [route, setRoute] = useState<Route>({ name: 'shelf' });
+  const [onboarded, setOnboardedState] = useState<boolean | null>(null);
+  const { cloudEnabled, session, loading: authLoading, sendCode, verifyCode, signOut } = useAuth();
 
-  // Reading themes depend on these fonts — gate the UI until they load.
   const [fontsLoaded] = useFonts({
     Lora_400Regular,
     PlayfairDisplay_700Bold,
@@ -31,7 +37,22 @@ export default function App() {
     PatrickHand_400Regular,
   });
 
-  if (!fontsLoaded) {
+  // Load the onboarding flag once.
+  useEffect(() => {
+    isOnboarded().then(setOnboardedState);
+  }, []);
+
+  // Sync from the cloud whenever a session becomes available.
+  useEffect(() => {
+    if (session?.user?.id) {
+      fullSync(session.user.id).catch(() => {
+        // Best-effort — local data remains intact on failure.
+      });
+    }
+  }, [session?.user?.id]);
+
+  const ready = fontsLoaded && onboarded !== null && !authLoading;
+  if (!ready) {
     return (
       <View style={[styles.safe, styles.center]}>
         <ActivityIndicator color={colors.accent} />
@@ -39,6 +60,32 @@ export default function App() {
     );
   }
 
+  // 1) First run → onboarding.
+  if (!onboarded) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar style="dark" />
+        <OnboardingScreen
+          onDone={async () => {
+            await setOnboarded();
+            setOnboardedState(true);
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // 2) Cloud enabled but signed out → sign in.
+  if (cloudEnabled && !session) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar style="dark" />
+        <SignInScreen onSendCode={sendCode} onVerifyCode={verifyCode} />
+      </SafeAreaView>
+    );
+  }
+
+  // 3) Main app.
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="dark" />
@@ -46,6 +93,8 @@ export default function App() {
         <BookshelfScreen
           onOpenBook={(book) => setRoute({ name: 'book', book })}
           onOpenGoals={() => setRoute({ name: 'goals' })}
+          accountEmail={session?.user?.email ?? undefined}
+          onSignOut={cloudEnabled ? signOut : undefined}
         />
       )}
       {route.name === 'book' && (

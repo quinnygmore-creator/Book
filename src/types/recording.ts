@@ -11,9 +11,10 @@ export type CleanupStatus = 'none' | 'processing' | 'ready' | 'failed';
 
 export interface Recording {
   id: string;
-  uri: string; // file:// path in the app's document directory
+  uri: string; // file:// path in the app's document directory (local-only)
   durationMillis: number;
   createdAt: string; // ISO timestamp
+  updatedAt?: string; // ISO; used for last-write-wins sync
 
   // Phase 6 — the book this entry belongs to (undefined = unassigned)
   bookId?: string;

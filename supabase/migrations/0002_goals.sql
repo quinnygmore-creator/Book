@@ -1,12 +1,11 @@
 -- ============================================================
 -- Books — Goals system (Phase 8)
 -- ------------------------------------------------------------
--- Goals contain milestones. Entries (notes) link to goals via a
--- note_goals join table, populated by the AI goal-detection step.
+-- TEXT ids (client-generated) to match the rest of the schema.
 -- ============================================================
 
 create table if not exists goals (
-  id          uuid primary key default gen_random_uuid(),
+  id          text primary key,
   user_id     uuid not null references profiles(id) on delete cascade,
   title       text not null,
   created_at  timestamptz default now(),
@@ -14,9 +13,9 @@ create table if not exists goals (
 );
 
 create table if not exists milestones (
-  id          uuid primary key default gen_random_uuid(),
+  id          text primary key,
   user_id     uuid not null references profiles(id) on delete cascade,
-  goal_id     uuid not null references goals(id) on delete cascade,
+  goal_id     text not null references goals(id) on delete cascade,
   title       text not null,
   is_done     boolean default false,
   sort_order  int default 0,
@@ -25,8 +24,8 @@ create table if not exists milestones (
 
 -- Which entries mention / progress which goals (AI-detected).
 create table if not exists note_goals (
-  note_id     uuid not null references notes(id) on delete cascade,
-  goal_id     uuid not null references goals(id) on delete cascade,
+  note_id     text not null references notes(id) on delete cascade,
+  goal_id     text not null references goals(id) on delete cascade,
   user_id     uuid not null references profiles(id) on delete cascade,
   created_at  timestamptz default now(),
   primary key (note_id, goal_id)

@@ -33,9 +33,9 @@ export async function listRecordings(bookId?: string): Promise<Recording[]> {
   const normalized = items
     // Default status fields for recordings saved in earlier phases.
     .map((r) => ({
-      transcriptStatus: 'none' as const,
-      cleanupStatus: 'none' as const,
       ...r,
+      transcriptStatus: r.transcriptStatus ?? 'none',
+      cleanupStatus: r.cleanupStatus ?? 'none',
     }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
@@ -58,6 +58,7 @@ export async function saveRecording(
     uri: dest,
     durationMillis,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     bookId,
     transcriptStatus: 'none',
     cleanupStatus: 'none',
@@ -66,6 +67,11 @@ export async function saveRecording(
   const items = await listRecordings();
   await writeAll([recording, ...items]);
   return recording;
+}
+
+/** Replace the entire recordings list (used by cloud sync). */
+export async function replaceAllRecordings(items: Recording[]): Promise<void> {
+  await writeAll(items);
 }
 
 /** Count entries per book id, e.g. { "<bookId>": 3 }. */
@@ -111,7 +117,7 @@ export async function updateRecording(
   let updated: Recording | null = null;
   const next = items.map((r) => {
     if (r.id !== id) return r;
-    updated = { ...r, ...patch };
+    updated = { ...r, ...patch, updatedAt: new Date().toISOString() };
     return updated;
   });
   if (updated) await writeAll(next);

@@ -1,11 +1,9 @@
 -- ============================================================
--- Books — Foundational schema (Phase 2 design, committed now)
+-- Books — Foundational schema (Phase 2 design)
 -- ------------------------------------------------------------
--- Phase 3 (Voice Capture) runs LOCAL-FIRST on the device, so the
--- app needs no backend to record/play/delete. This migration sets
--- up the database that Phase 4 (Speech-to-Text) will start writing
--- to. A "recording" becomes a row in `notes` with audio_path set
--- and status = 'processing' until transcription completes.
+-- IDs are TEXT and generated on the client so the same id works
+-- offline (local-first) and in the cloud (sync) without remapping.
+-- profiles.id stays a uuid because it mirrors auth.users.
 -- ============================================================
 
 -- ---------- PROFILES (extends Supabase auth.users) ----------
@@ -19,7 +17,7 @@ create table if not exists profiles (
 
 -- ---------- BOOKS (folders, but emotional) ----------
 create table if not exists books (
-  id          uuid primary key default gen_random_uuid(),
+  id          text primary key,
   user_id     uuid not null references profiles(id) on delete cascade,
   title       text not null,
   cover_emoji text,
@@ -31,13 +29,13 @@ create table if not exists books (
 
 -- ---------- NOTES (a "page" / entry; also holds the recording) ----------
 create table if not exists notes (
-  id            uuid primary key default gen_random_uuid(),
+  id            text primary key,
   user_id       uuid not null references profiles(id) on delete cascade,
-  book_id       uuid references books(id) on delete set null,  -- null = Inbox
+  book_id       text references books(id) on delete set null,  -- null = Inbox
   title         text,
   body_clean    text,   -- AI-structured markdown (shown by default)
   body_raw      text,   -- original transcript (trust + reprocess)
-  audio_path    text,   -- Storage path (nullable; may be deleted post-STT)
+  audio_path    text,   -- local-only in MVP; reserved for cloud storage
   duration_secs int,
   status        text default 'processing',  -- processing|ready|failed
   error_message text,
@@ -50,7 +48,7 @@ create index if not exists notes_user_book_created_idx
 
 -- ---------- USAGE_EVENTS (cost metering / rate limits) ----------
 create table if not exists usage_events (
-  id         uuid primary key default gen_random_uuid(),
+  id         text primary key,
   user_id    uuid not null references profiles(id) on delete cascade,
   kind       text not null,   -- stt | cleanup
   audio_secs int,

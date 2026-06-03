@@ -21,8 +21,9 @@ slice before the next begins.
 | 5 | AI cleanup engine (filler / grammar / title / structure) | ✅ Complete |
 | 6 | Book system (create / rename / delete / add entries) | ✅ Complete |
 | 7 | Beautiful reading experience (4 themes, reader) | ✅ Complete |
-| 8 | **Goals system** (goals, milestones, AI detection) | ✅ Complete |
-| 9 | Final MVP review | ⏳ |
+| 8 | Goals system (goals, milestones, AI detection) | ✅ Complete |
+| 9 | Final MVP review + launch plan | ✅ Complete |
+| — | **Post-review**: auth + sync, onboarding, inline edit | ✅ Complete |
 
 ---
 
@@ -290,4 +291,40 @@ src/lib/recordingStore.ts                 + countByGoal
 src/components/RecordingItem.tsx          🎯 goal chips
 src/screens/BookScreen.tsx                runs detection, passes goal titles
 src/screens/BookshelfScreen.tsx / App.tsx Goals navigation
+```
+
+---
+
+## Post-review additions (auth + sync, onboarding, inline edit)
+
+Acting on the Phase 9 review, three launch-readiness features were added. All
+stay **local-first**: with no Supabase configured the app still runs offline
+(no sign-in), and cloud features activate only when `EXPO_PUBLIC_SUPABASE_URL`
++ anon key are set.
+
+### Auth + cloud sync
+- **Auth:** email one-time-code sign-in via Supabase (no OAuth provider setup
+  needed; Apple/Google can be added later). `SignInScreen` + `useAuth`.
+- **Sync:** `src/lib/sync.ts` — last-write-wins by `updatedAt`. On sign-in it
+  pulls cloud rows, merges with local, writes the merged result locally, and
+  pushes it back. Covers books, notes, goals, milestones, and note→goal links.
+- **Schema:** ids are now client-generated `text` (so the same id works offline
+  and in the cloud). See updated `0001_init.sql` / `0002_goals.sql`.
+- **Limitation:** audio files stay on-device; an entry synced to another device
+  shows its page text but can't replay the original audio. Sync runs on sign-in.
+
+### Onboarding
+First-run carousel (`OnboardingScreen`) explaining speak → beautify → collect,
+ending by requesting microphone access. Gated by a flag (`src/lib/onboarding.ts`).
+
+### Inline page editing
+The Reader has an **Edit** mode: tap Edit to correct the AI-cleaned title/body
+in the current theme, then Save (persists via `updateRecording`).
+
+### Setup for cloud mode
+```bash
+# add to .env:
+EXPO_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+# apply the SQL in supabase/migrations to your project, then enable email auth.
 ```

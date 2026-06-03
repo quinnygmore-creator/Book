@@ -24,6 +24,11 @@ export async function listGoals(): Promise<Goal[]> {
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+/** Replace the entire goals list (used by cloud sync). */
+export async function replaceAllGoals(goals: Goal[]): Promise<void> {
+  await writeAll(goals);
+}
+
 export async function createGoal(title: string): Promise<Goal> {
   const goals = await listGoals();
   const now = new Date().toISOString();

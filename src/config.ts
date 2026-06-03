@@ -3,6 +3,9 @@
  * Copy .env.example to .env and fill these in to enable transcription.
  */
 export const config = {
+  // Supabase project URL, e.g. https://<project-ref>.supabase.co
+  supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
+
   // Full URL of the deployed `transcribe` Edge Function, e.g.
   // https://<project-ref>.functions.supabase.co/transcribe
   transcribeUrl: process.env.EXPO_PUBLIC_TRANSCRIBE_URL ?? '',

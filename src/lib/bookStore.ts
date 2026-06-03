@@ -22,6 +22,11 @@ export async function listBooks(): Promise<Book[]> {
   return books.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+/** Replace the entire books list (used by cloud sync). */
+export async function replaceAllBooks(books: Book[]): Promise<void> {
+  await writeAll(books);
+}
+
 export async function createBook(title: string): Promise<Book> {
   const books = await listBooks();
   const now = new Date().toISOString();

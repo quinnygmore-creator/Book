@@ -17,6 +17,8 @@ import { colors, radius } from '../theme/colors';
 interface Props {
   onOpenBook: (book: Book) => void;
   onOpenGoals: () => void;
+  accountEmail?: string;
+  onSignOut?: () => void;
 }
 
 type ModalState = { mode: 'create' } | { mode: 'rename'; book: Book } | null;
@@ -26,7 +28,7 @@ const GAP = 12;
 const PAD = 20;
 const CARD_W = (Dimensions.get('window').width - PAD * 2 - GAP) / 2;
 
-export function BookshelfScreen({ onOpenBook, onOpenGoals }: Props) {
+export function BookshelfScreen({ onOpenBook, onOpenGoals, accountEmail, onSignOut }: Props) {
   const [books, setBooks] = useState<Book[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [modal, setModal] = useState<ModalState>(null);
@@ -102,9 +104,24 @@ export function BookshelfScreen({ onOpenBook, onOpenGoals }: Props) {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Text style={styles.brand}>Your Shelf</Text>
-          <Pressable onPress={onOpenGoals} hitSlop={8}>
-            <Text style={styles.goalsBtn}>🎯 Goals</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable onPress={onOpenGoals} hitSlop={8}>
+              <Text style={styles.goalsBtn}>🎯 Goals</Text>
+            </Pressable>
+            {onSignOut && (
+              <Pressable
+                hitSlop={8}
+                onPress={() =>
+                  Alert.alert(accountEmail ?? 'Account', undefined, [
+                    { text: 'Sign out', style: 'destructive', onPress: onSignOut },
+                    { text: 'Cancel', style: 'cancel' },
+                  ])
+                }
+              >
+                <Text style={styles.accountBtn}>Account</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
         <Text style={styles.tagline}>
           {books.length === 0
@@ -182,9 +199,19 @@ const styles = StyleSheet.create({
     color: colors.ink,
     letterSpacing: 0.3,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
   goalsBtn: {
     fontSize: 16,
     color: colors.accent,
+    fontWeight: '600',
+  },
+  accountBtn: {
+    fontSize: 16,
+    color: colors.inkSoft,
     fontWeight: '600',
   },
   tagline: {
