@@ -27,7 +27,10 @@ async function writeAll(items: Recording[]): Promise<void> {
 export async function listRecordings(): Promise<Recording[]> {
   const raw = await AsyncStorage.getItem(META_KEY);
   const items: Recording[] = raw ? JSON.parse(raw) : [];
-  return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return items
+    // Default transcript fields for recordings saved before Phase 4.
+    .map((r) => ({ transcriptStatus: 'none' as const, ...r }))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 /** Move a freshly-recorded temp file into permanent storage and save metadata. */
@@ -45,11 +48,28 @@ export async function saveRecording(
     uri: dest,
     durationMillis,
     createdAt: new Date().toISOString(),
+    transcriptStatus: 'none',
   };
 
   const items = await listRecordings();
   await writeAll([recording, ...items]);
   return recording;
+}
+
+/** Patch a recording's fields (e.g. transcript + status) and persist. */
+export async function updateRecording(
+  id: string,
+  patch: Partial<Recording>
+): Promise<Recording | null> {
+  const items = await listRecordings();
+  let updated: Recording | null = null;
+  const next = items.map((r) => {
+    if (r.id !== id) return r;
+    updated = { ...r, ...patch };
+    return updated;
+  });
+  if (updated) await writeAll(next);
+  return updated;
 }
 
 /** Delete a recording's audio file and its metadata. */

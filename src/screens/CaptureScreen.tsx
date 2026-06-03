@@ -14,10 +14,13 @@ import {
   deleteRecording,
   listRecordings,
   saveRecording,
+  updateRecording,
 } from '../lib/recordingStore';
 import { Recording } from '../types/recording';
 import { colors } from '../theme/colors';
 import { formatDuration } from '../lib/format';
+import { transcribeAudio } from '../lib/transcription';
+import { isTranscriptionConfigured } from '../config';
 
 // Ignore accidental taps that produce near-empty clips.
 const MIN_DURATION_MS = 500;
@@ -35,6 +38,29 @@ export function CaptureScreen() {
     refresh();
   }, [refresh]);
 
+  // Upload → Whisper → store transcript. Updates status as it goes.
+  const runTranscription = useCallback(
+    async (rec: Recording) => {
+      await updateRecording(rec.id, {
+        transcriptStatus: 'processing',
+        transcriptError: undefined,
+      });
+      await refresh();
+      try {
+        const text = await transcribeAudio(rec.uri);
+        await updateRecording(rec.id, { transcript: text, transcriptStatus: 'ready' });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Transcription failed.';
+        await updateRecording(rec.id, {
+          transcriptStatus: 'failed',
+          transcriptError: message,
+        });
+      }
+      await refresh();
+    },
+    [refresh]
+  );
+
   const handleRecordPress = useCallback(async () => {
     try {
       if (status === 'idle') {
@@ -42,15 +68,19 @@ export function CaptureScreen() {
       } else if (status === 'recording') {
         const result = await stop();
         if (result && result.durationMillis >= MIN_DURATION_MS) {
-          await saveRecording(result.uri, result.durationMillis);
+          const saved = await saveRecording(result.uri, result.durationMillis);
           await refresh();
+          // Auto-transcribe when configured; otherwise leave a manual button.
+          if (isTranscriptionConfigured()) {
+            runTranscription(saved);
+          }
         }
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Something went wrong.';
       Alert.alert('Recording error', message);
     }
-  }, [status, start, stop, refresh]);
+  }, [status, start, stop, refresh, runTranscription]);
 
   const handlePlay = useCallback(
     (rec: Recording) => {
@@ -111,6 +141,7 @@ export function CaptureScreen() {
             isPlaying={playingId === item.id}
             onPlay={() => handlePlay(item)}
             onDelete={() => handleDelete(item)}
+            onTranscribe={() => runTranscription(item)}
           />
         )}
       />

@@ -16,8 +16,8 @@ slice before the next begins.
 | ----- | ------- | ------ |
 | 1 | Product design | ✅ Complete (see plan) |
 | 2 | System architecture | ✅ Complete (see plan) |
-| 3 | **Voice capture** (record / save / play / delete) | ✅ Complete |
-| 4 | Speech-to-text | ⏳ Next |
+| 3 | Voice capture (record / save / play / delete) | ✅ Complete |
+| 4 | **Speech-to-text** (upload / transcribe / display) | ✅ Complete |
 | 5 | AI cleanup engine | ⏳ |
 | 6 | Book system | ⏳ |
 | 7 | Beautiful reading experience | ⏳ |
@@ -77,3 +77,50 @@ Recordings are stored locally:
 
 The Supabase schema in `supabase/migrations/0001_init.sql` is the foundation that
 Phase 4 begins writing to (a recording becomes a `notes` row with `audio_path`).
+
+---
+
+## Phase 4 — Speech-to-Text (current)
+
+Each recording is uploaded to a Supabase **Edge Function** (`transcribe`) that calls
+**OpenAI Whisper** and returns the transcript, which is displayed under the
+recording. The OpenAI key stays server-side, never in the app.
+
+Flow: `record → upload audio → Whisper → transcript stored locally → displayed`.
+Transcription auto-runs after recording when configured; otherwise each recording
+shows a **Transcribe** button. Failures show a friendly message + **Retry**.
+
+### Setup (one-time)
+
+```bash
+# 1. Deploy the function (needs the Supabase CLI + a project)
+supabase functions deploy transcribe --no-verify-jwt
+supabase secrets set OPENAI_API_KEY=sk-...
+
+# 2. Point the app at it
+cp .env.example .env
+#   EXPO_PUBLIC_TRANSCRIBE_URL=https://<project-ref>.functions.supabase.co/transcribe
+#   EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+
+npm start
+```
+
+> Without `.env`, the app still records/plays/deletes; the **Transcribe** button
+> explains that transcription isn’t configured yet.
+
+### New files / changes
+```
+supabase/functions/transcribe/index.ts   Whisper-backed Edge Function
+src/config.ts                            Reads EXPO_PUBLIC_* env
+src/lib/transcription.ts                 Upload + parse transcript, typed errors
+src/types/recording.ts                   + transcript, transcriptStatus
+src/lib/recordingStore.ts                + updateRecording()
+src/components/RecordingItem.tsx          Transcript display / states
+src/screens/CaptureScreen.tsx             Auto-transcribe + retry wiring
+.env.example                             Config template
+```
+
+### Database
+No schema change needed — the transcript maps onto `notes.body_raw` and
+`notes.status` from `0001_init.sql`. (The app still stores locally in Phase 4;
+the cloud write happens when auth + sync land.)
