@@ -28,8 +28,12 @@ export async function listRecordings(): Promise<Recording[]> {
   const raw = await AsyncStorage.getItem(META_KEY);
   const items: Recording[] = raw ? JSON.parse(raw) : [];
   return items
-    // Default transcript fields for recordings saved before Phase 4.
-    .map((r) => ({ transcriptStatus: 'none' as const, ...r }))
+    // Default status fields for recordings saved in earlier phases.
+    .map((r) => ({
+      transcriptStatus: 'none' as const,
+      cleanupStatus: 'none' as const,
+      ...r,
+    }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -49,6 +53,7 @@ export async function saveRecording(
     durationMillis,
     createdAt: new Date().toISOString(),
     transcriptStatus: 'none',
+    cleanupStatus: 'none',
   };
 
   const items = await listRecordings();

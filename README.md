@@ -17,8 +17,8 @@ slice before the next begins.
 | 1 | Product design | ✅ Complete (see plan) |
 | 2 | System architecture | ✅ Complete (see plan) |
 | 3 | Voice capture (record / save / play / delete) | ✅ Complete |
-| 4 | **Speech-to-text** (upload / transcribe / display) | ✅ Complete |
-| 5 | AI cleanup engine | ⏳ |
+| 4 | Speech-to-text (upload / transcribe / display) | ✅ Complete |
+| 5 | **AI cleanup engine** (filler / grammar / title / structure) | ✅ Complete |
 | 6 | Book system | ⏳ |
 | 7 | Beautiful reading experience | ⏳ |
 | 8 | Goals system | ⏳ |
@@ -124,3 +124,46 @@ src/screens/CaptureScreen.tsx             Auto-transcribe + retry wiring
 No schema change needed — the transcript maps onto `notes.body_raw` and
 `notes.status` from `0001_init.sql`. (The app still stores locally in Phase 4;
 the cloud write happens when auth + sync land.)
+
+---
+
+## Phase 5 — AI Cleanup Engine (current)
+
+After transcription, the raw text is sent to a second Edge Function (`cleanup`)
+that calls **Claude** and returns a structured `{ title, body }` page — filler
+removed, grammar fixed, a short title generated, and natural structure applied.
+This chains automatically after transcription.
+
+Example: `"Umm I was thinking maybe a tote bag with a hidden compartment"` →
+**Design Concept** — *"A tote bag featuring a hidden compartment while maintaining
+a clean, minimal appearance."*
+
+Each entry shows a **Clean / Raw** toggle so users can always see the original
+transcript (trust + transparency). Failures show a message + **Retry polish**.
+
+### Prompt strategy
+- A forced `save_page` tool guarantees structured `{ title, body }` output.
+- The system prompt removes filler / fixes grammar but is explicitly forbidden
+  from adding ideas or responding to content — it preserves the speaker's voice.
+- A one-shot example anchors title length and structure.
+
+### Setup
+```bash
+supabase functions deploy cleanup --no-verify-jwt
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+# add to .env:  EXPO_PUBLIC_CLEANUP_URL=https://<ref>.functions.supabase.co/cleanup
+```
+
+### New files / changes
+```
+supabase/functions/cleanup/index.ts   Claude-backed cleanup (tool-forced JSON)
+src/lib/cleanup.ts                     Client call + typed errors
+src/config.ts                          + cleanupUrl / isCleanupConfigured
+src/types/recording.ts                 + title, bodyClean, cleanupStatus
+src/components/RecordingItem.tsx        Polished page + Clean/Raw toggle
+src/screens/CaptureScreen.tsx           Auto-chain cleanup + manual polish
+```
+
+### Database
+No schema change — the page maps onto `notes.title` + `notes.body_clean`
+(already defined in `0001_init.sql`).

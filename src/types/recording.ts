@@ -7,6 +7,7 @@
  * (audio_path + body_raw = transcript).
  */
 export type TranscriptStatus = 'none' | 'processing' | 'ready' | 'failed';
+export type CleanupStatus = 'none' | 'processing' | 'ready' | 'failed';
 
 export interface Recording {
   id: string;
@@ -18,4 +19,10 @@ export interface Recording {
   transcript?: string;
   transcriptStatus: TranscriptStatus;
   transcriptError?: string;
+
+  // Phase 5 — AI cleanup (the structured page)
+  title?: string;
+  bodyClean?: string;
+  cleanupStatus: CleanupStatus;
+  cleanupError?: string;
 }

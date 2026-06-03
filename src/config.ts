@@ -7,6 +7,9 @@ export const config = {
   // https://<project-ref>.functions.supabase.co/transcribe
   transcribeUrl: process.env.EXPO_PUBLIC_TRANSCRIBE_URL ?? '',
 
+  // Full URL of the deployed `cleanup` Edge Function.
+  cleanupUrl: process.env.EXPO_PUBLIC_CLEANUP_URL ?? '',
+
   // Supabase anon key (sent as Bearer; harmless to ship in a client).
   supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
 };
@@ -14,4 +17,9 @@ export const config = {
 /** True once a transcription endpoint has been configured. */
 export function isTranscriptionConfigured(): boolean {
   return config.transcribeUrl.trim().length > 0;
+}
+
+/** True once an AI cleanup endpoint has been configured. */
+export function isCleanupConfigured(): boolean {
+  return config.cleanupUrl.trim().length > 0;
 }

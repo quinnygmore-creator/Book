@@ -20,7 +20,8 @@ import { Recording } from '../types/recording';
 import { colors } from '../theme/colors';
 import { formatDuration } from '../lib/format';
 import { transcribeAudio } from '../lib/transcription';
-import { isTranscriptionConfigured } from '../config';
+import { cleanupText } from '../lib/cleanup';
+import { isCleanupConfigured, isTranscriptionConfigured } from '../config';
 
 // Ignore accidental taps that produce near-empty clips.
 const MIN_DURATION_MS = 500;
@@ -38,7 +39,29 @@ export function CaptureScreen() {
     refresh();
   }, [refresh]);
 
-  // Upload → Whisper → store transcript. Updates status as it goes.
+  // Transcript → Claude → store the structured page. Takes the text
+  // directly so it can be chained right after transcription.
+  const runCleanupFor = useCallback(
+    async (id: string, text: string) => {
+      await updateRecording(id, { cleanupStatus: 'processing', cleanupError: undefined });
+      await refresh();
+      try {
+        const { title, body } = await cleanupText(text);
+        await updateRecording(id, {
+          title,
+          bodyClean: body,
+          cleanupStatus: 'ready',
+        });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'AI cleanup failed.';
+        await updateRecording(id, { cleanupStatus: 'failed', cleanupError: message });
+      }
+      await refresh();
+    },
+    [refresh]
+  );
+
+  // Upload → Whisper → store transcript, then auto-chain AI cleanup.
   const runTranscription = useCallback(
     async (rec: Recording) => {
       await updateRecording(rec.id, {
@@ -49,16 +72,20 @@ export function CaptureScreen() {
       try {
         const text = await transcribeAudio(rec.uri);
         await updateRecording(rec.id, { transcript: text, transcriptStatus: 'ready' });
+        await refresh();
+        if (isCleanupConfigured()) {
+          await runCleanupFor(rec.id, text);
+        }
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Transcription failed.';
         await updateRecording(rec.id, {
           transcriptStatus: 'failed',
           transcriptError: message,
         });
+        await refresh();
       }
-      await refresh();
     },
-    [refresh]
+    [refresh, runCleanupFor]
   );
 
   const handleRecordPress = useCallback(async () => {
@@ -142,6 +169,7 @@ export function CaptureScreen() {
             onPlay={() => handlePlay(item)}
             onDelete={() => handleDelete(item)}
             onTranscribe={() => runTranscription(item)}
+            onCleanup={() => runCleanupFor(item.id, item.transcript ?? '')}
           />
         )}
       />
