@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Books",
+    "slug": "books",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F7F3ED",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F3ED"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.books.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Books needs your microphone so you can speak your thoughts into pages."
+      }
+    },
+    "android": {
+      "package": "com.books.app",
+      "permissions": ["RECORD_AUDIO"]
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Books needs your microphone so you can speak your thoughts into pages."
+        }
+      ]
+    ]
+  }
+}
