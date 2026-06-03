@@ -9,12 +9,13 @@ import { Inter_400Regular, Inter_600SemiBold } from '@expo-google-fonts/inter';
 import { PatrickHand_400Regular } from '@expo-google-fonts/patrick-hand';
 import { BookshelfScreen } from './src/screens/BookshelfScreen';
 import { BookScreen } from './src/screens/BookScreen';
+import { GoalsScreen } from './src/screens/GoalsScreen';
 import { Book } from './src/types/book';
 import { colors } from './src/theme/colors';
 
-// Lightweight, dependency-free navigation. The app has exactly two
-// screens for now: the shelf and a single open book.
-type Route = { name: 'shelf' } | { name: 'book'; book: Book };
+// Lightweight, dependency-free navigation between the shelf, an open
+// book, and the goals screen.
+type Route = { name: 'shelf' } | { name: 'book'; book: Book } | { name: 'goals' };
 
 export default function App() {
   const [route, setRoute] = useState<Route>({ name: 'shelf' });
@@ -41,10 +42,17 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="dark" />
-      {route.name === 'shelf' ? (
-        <BookshelfScreen onOpenBook={(book) => setRoute({ name: 'book', book })} />
-      ) : (
+      {route.name === 'shelf' && (
+        <BookshelfScreen
+          onOpenBook={(book) => setRoute({ name: 'book', book })}
+          onOpenGoals={() => setRoute({ name: 'goals' })}
+        />
+      )}
+      {route.name === 'book' && (
         <BookScreen book={route.book} onBack={() => setRoute({ name: 'shelf' })} />
+      )}
+      {route.name === 'goals' && (
+        <GoalsScreen onBack={() => setRoute({ name: 'shelf' })} />
       )}
     </SafeAreaView>
   );

@@ -78,6 +78,18 @@ export async function countByBook(): Promise<Record<string, number>> {
   return counts;
 }
 
+/** Count entries linked to each goal id, e.g. { "<goalId>": 2 }. */
+export async function countByGoal(): Promise<Record<string, number>> {
+  const items = await listRecordings();
+  const counts: Record<string, number> = {};
+  for (const r of items) {
+    for (const gid of r.goalIds ?? []) {
+      counts[gid] = (counts[gid] ?? 0) + 1;
+    }
+  }
+  return counts;
+}
+
 /**
  * Detach all entries from a book (sets bookId to undefined). Mirrors the
  * schema's ON DELETE SET NULL — deleting a book keeps its entries.

@@ -20,8 +20,8 @@ slice before the next begins.
 | 4 | Speech-to-text (upload / transcribe / display) | ✅ Complete |
 | 5 | AI cleanup engine (filler / grammar / title / structure) | ✅ Complete |
 | 6 | Book system (create / rename / delete / add entries) | ✅ Complete |
-| 7 | **Beautiful reading experience** (4 themes, reader) | ✅ Complete |
-| 8 | Goals system | ⏳ |
+| 7 | Beautiful reading experience (4 themes, reader) | ✅ Complete |
+| 8 | **Goals system** (goals, milestones, AI detection) | ✅ Complete |
 | 9 | Final MVP review | ⏳ |
 
 ---
@@ -245,4 +245,49 @@ src/lib/format.ts               + formatLongDate
 src/components/RecordingItem.tsx + onOpen (tap to read)
 src/screens/BookScreen.tsx       Opens the Reader
 App.tsx                          Loads fonts before rendering
+```
+
+---
+
+## Phase 8 — Goals System (current)
+
+Create **goals**, add **milestones**, and check them off. After an entry is
+cleaned, an AI step links it to any goals it mentions.
+
+Example: the entry *"I worked on the tote bag today"* automatically links to the
+goal **Launch Clothing Brand** — shown as a 🎯 chip on the entry and counted as
+"mentioned in N entries" on the goal.
+
+### Goal architecture
+- Goals contain milestones (embedded locally; separate `milestones` table in SQL).
+- Entries link to goals via `note_goals` in SQL; locally via `Recording.goalIds`.
+- A **Goals** screen (reached from the shelf header) lists goals with a progress
+  bar, tappable milestone checkboxes, add-milestone, and long-press rename/delete.
+
+### AI workflow
+`cleaned entry → POST /detect-goals (text + user's goals) → Claude (forced
+link_goals tool) → matched goal ids → stored on the entry`. Best-effort: any
+failure is ignored so it never blocks the capture loop. The model may only
+return ids from the provided list (validated server-side).
+
+### Setup
+```bash
+supabase functions deploy detect-goals --no-verify-jwt
+# add to .env:  EXPO_PUBLIC_DETECT_GOALS_URL=https://<ref>.functions.supabase.co/detect-goals
+```
+
+### New files / changes
+```
+supabase/migrations/0002_goals.sql       goals / milestones / note_goals + RLS
+supabase/functions/detect-goals/index.ts Claude goal detection (forced tool)
+src/types/goal.ts                         Goal + Milestone
+src/lib/goalStore.ts                      goal/milestone CRUD
+src/lib/goalDetection.ts                  client call (best-effort)
+src/components/GoalCard.tsx               goal + milestones + progress
+src/screens/GoalsScreen.tsx               the goals screen
+src/config.ts / src/types/recording.ts   + detectGoalsUrl / goalIds
+src/lib/recordingStore.ts                 + countByGoal
+src/components/RecordingItem.tsx          🎯 goal chips
+src/screens/BookScreen.tsx                runs detection, passes goal titles
+src/screens/BookshelfScreen.tsx / App.tsx Goals navigation
 ```

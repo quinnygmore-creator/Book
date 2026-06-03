@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRecorder } from '../hooks/useRecorder';
 import { usePlayer } from '../hooks/usePlayer';
@@ -17,7 +17,14 @@ import { colors } from '../theme/colors';
 import { formatDuration } from '../lib/format';
 import { transcribeAudio } from '../lib/transcription';
 import { cleanupText } from '../lib/cleanup';
-import { isCleanupConfigured, isTranscriptionConfigured } from '../config';
+import { detectGoals } from '../lib/goalDetection';
+import { listGoals } from '../lib/goalStore';
+import { Goal } from '../types/goal';
+import {
+  isCleanupConfigured,
+  isGoalDetectionConfigured,
+  isTranscriptionConfigured,
+} from '../config';
 
 // Ignore accidental taps that produce near-empty clips.
 const MIN_DURATION_MS = 500;
@@ -31,11 +38,39 @@ export function BookScreen({ book, onBack }: Props) {
   const { status, durationMillis, start, stop } = useRecorder();
   const { playingId, play, stop: stopPlayback } = usePlayer();
   const [entries, setEntries] = useState<Recording[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [readerIndex, setReaderIndex] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
-    setEntries(await listRecordings(book.id));
+    const [e, g] = await Promise.all([listRecordings(book.id), listGoals()]);
+    setEntries(e);
+    setGoals(g);
   }, [book.id]);
+
+  const goalsById = useMemo(
+    () => Object.fromEntries(goals.map((g) => [g.id, g.title])),
+    [goals]
+  );
+
+  // Best-effort: link an entry to any goals it mentions. Never blocks.
+  const runGoalDetection = useCallback(
+    async (id: string, text: string) => {
+      if (!isGoalDetectionConfigured() || goals.length === 0) return;
+      try {
+        const matched = await detectGoals(
+          text,
+          goals.map((g) => ({ id: g.id, title: g.title }))
+        );
+        if (matched.length > 0) {
+          await updateRecording(id, { goalIds: matched });
+          await refresh();
+        }
+      } catch {
+        // Detection is optional — ignore failures.
+      }
+    },
+    [goals, refresh]
+  );
 
   useEffect(() => {
     refresh();
@@ -49,13 +84,16 @@ export function BookScreen({ book, onBack }: Props) {
       try {
         const { title, body } = await cleanupText(text);
         await updateRecording(id, { title, bodyClean: body, cleanupStatus: 'ready' });
+        await refresh();
+        // Once the page is clean, link it to any goals it mentions.
+        await runGoalDetection(id, body);
       } catch (e) {
         const message = e instanceof Error ? e.message : 'AI cleanup failed.';
         await updateRecording(id, { cleanupStatus: 'failed', cleanupError: message });
+        await refresh();
       }
-      await refresh();
     },
-    [refresh]
+    [refresh, runGoalDetection]
   );
 
   // Upload → Whisper → store transcript, then auto-chain AI cleanup.
@@ -175,6 +213,9 @@ export function BookScreen({ book, onBack }: Props) {
             onTranscribe={() => runTranscription(item)}
             onCleanup={() => runCleanupFor(item.id, item.transcript ?? '')}
             onOpen={() => setReaderIndex(index)}
+            goalTitles={(item.goalIds ?? [])
+              .map((gid) => goalsById[gid])
+              .filter(Boolean)}
           />
         )}
       />

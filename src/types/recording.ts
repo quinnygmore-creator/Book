@@ -18,6 +18,9 @@ export interface Recording {
   // Phase 6 — the book this entry belongs to (undefined = unassigned)
   bookId?: string;
 
+  // Phase 8 — goals this entry was AI-linked to
+  goalIds?: string[];
+
   // Phase 4 — speech-to-text
   transcript?: string;
   transcriptStatus: TranscriptStatus;

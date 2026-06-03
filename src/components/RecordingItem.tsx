@@ -19,6 +19,7 @@ interface Props {
   onTranscribe: () => void;
   onCleanup: () => void;
   onOpen: () => void;
+  goalTitles?: string[];
 }
 
 export function RecordingItem({
@@ -30,6 +31,7 @@ export function RecordingItem({
   onTranscribe,
   onCleanup,
   onOpen,
+  goalTitles,
 }: Props) {
   return (
     <View style={styles.row}>
@@ -61,6 +63,16 @@ export function RecordingItem({
           <Text style={styles.deleteTxt}>Delete</Text>
         </Pressable>
       </View>
+
+      {goalTitles && goalTitles.length > 0 && (
+        <View style={styles.goalRow}>
+          {goalTitles.map((t, i) => (
+            <View key={i} style={styles.goalChip}>
+              <Text style={styles.goalChipTxt}>🎯 {t}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       <Content
         recording={recording}
@@ -311,6 +323,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.accent,
+  },
+  goalRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  goalChip: {
+    backgroundColor: colors.background,
+    borderRadius: radius.pill,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  goalChipTxt: {
+    fontSize: 12,
+    color: colors.inkSoft,
+    fontWeight: '600',
   },
   errorTxt: {
     fontSize: 14,

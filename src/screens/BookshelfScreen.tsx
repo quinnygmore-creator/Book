@@ -16,6 +16,7 @@ import { colors, radius } from '../theme/colors';
 
 interface Props {
   onOpenBook: (book: Book) => void;
+  onOpenGoals: () => void;
 }
 
 type ModalState = { mode: 'create' } | { mode: 'rename'; book: Book } | null;
@@ -25,7 +26,7 @@ const GAP = 12;
 const PAD = 20;
 const CARD_W = (Dimensions.get('window').width - PAD * 2 - GAP) / 2;
 
-export function BookshelfScreen({ onOpenBook }: Props) {
+export function BookshelfScreen({ onOpenBook, onOpenGoals }: Props) {
   const [books, setBooks] = useState<Book[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [modal, setModal] = useState<ModalState>(null);
@@ -99,7 +100,12 @@ export function BookshelfScreen({ onOpenBook }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.brand}>Your Shelf</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.brand}>Your Shelf</Text>
+          <Pressable onPress={onOpenGoals} hitSlop={8}>
+            <Text style={styles.goalsBtn}>🎯 Goals</Text>
+          </Pressable>
+        </View>
         <Text style={styles.tagline}>
           {books.length === 0
             ? 'Create your first book to begin.'
@@ -165,11 +171,21 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   brand: {
     fontSize: 30,
     fontWeight: '700',
     color: colors.ink,
     letterSpacing: 0.3,
+  },
+  goalsBtn: {
+    fontSize: 16,
+    color: colors.accent,
+    fontWeight: '600',
   },
   tagline: {
     fontSize: 15,
