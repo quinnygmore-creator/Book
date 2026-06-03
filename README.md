@@ -19,8 +19,8 @@ slice before the next begins.
 | 3 | Voice capture (record / save / play / delete) | ✅ Complete |
 | 4 | Speech-to-text (upload / transcribe / display) | ✅ Complete |
 | 5 | AI cleanup engine (filler / grammar / title / structure) | ✅ Complete |
-| 6 | **Book system** (create / rename / delete / add entries) | ✅ Complete |
-| 7 | Beautiful reading experience | ⏳ |
+| 6 | Book system (create / rename / delete / add entries) | ✅ Complete |
+| 7 | **Beautiful reading experience** (4 themes, reader) | ✅ Complete |
 | 8 | Goals system | ⏳ |
 | 9 | Final MVP review | ⏳ |
 
@@ -203,3 +203,46 @@ App.tsx                           Shelf ⇄ Book navigation
 No schema change — `books` and `notes.book_id` already exist in `0001_init.sql`.
 Local data layer (`bookStore` / `recordingStore`) maps 1:1 to Supabase SDK calls:
 `insert/update/delete` on **books**, and updating **notes.book_id** for assignment.
+
+---
+
+## Phase 7 — Beautiful Reading Experience (current)
+
+Tapping an entry opens a full-screen, book-like **Reader**: pages you swipe
+between horizontally, rendered in one of four themes.
+
+### Themes
+| Theme | Feel | Fonts |
+| ----- | ---- | ----- |
+| **Journal** | warm cream paper, left margin rule | Playfair Display + Lora |
+| **Handwritten** | ink-blue, large flowing script | Caveat |
+| **Minimal** | crisp white, generous spacing | Inter |
+| **Sketchbook** | textured paper, dashed frame | Patrick Hand |
+
+A theme switcher at the bottom of the reader restyles every page live and
+persists the choice on the book (`books.theme`).
+
+### Design system
+- `src/theme/themes.ts` — typed `ReadingTheme` (page color, ink, fonts, sizes,
+  line height, decorations) for all four themes.
+- Real typography via `@expo-google-fonts/*`, loaded in `App.tsx` (UI gated
+  until fonts are ready).
+- `PageView` renders title + body with lightweight markdown (bullets, sub-
+  headings, paragraphs) and a long-date header for a book-like touch.
+
+### Page transitions
+Horizontal `FlatList` with `pagingEnabled` gives the swipe-between-pages feel;
+each page scrolls vertically for long entries.
+
+### New files / changes
+```
+src/theme/themes.ts            ThemeId + 4 ReadingThemes + helpers
+src/components/PageView.tsx     Themed page renderer (mini markdown)
+src/components/Reader.tsx       Full-screen pager + theme switcher
+src/types/book.ts               + theme
+src/lib/bookStore.ts            + setBookTheme; new books default to 'journal'
+src/lib/format.ts               + formatLongDate
+src/components/RecordingItem.tsx + onOpen (tap to read)
+src/screens/BookScreen.tsx       Opens the Reader
+App.tsx                          Loads fonts before rendering
+```

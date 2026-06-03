@@ -18,6 +18,7 @@ interface Props {
   onDelete: () => void;
   onTranscribe: () => void;
   onCleanup: () => void;
+  onOpen: () => void;
 }
 
 export function RecordingItem({
@@ -28,6 +29,7 @@ export function RecordingItem({
   onDelete,
   onTranscribe,
   onCleanup,
+  onOpen,
 }: Props) {
   return (
     <View style={styles.row}>
@@ -60,7 +62,12 @@ export function RecordingItem({
         </Pressable>
       </View>
 
-      <Content recording={recording} onTranscribe={onTranscribe} onCleanup={onCleanup} />
+      <Content
+        recording={recording}
+        onTranscribe={onTranscribe}
+        onCleanup={onCleanup}
+        onOpen={onOpen}
+      />
     </View>
   );
 }
@@ -69,10 +76,12 @@ function Content({
   recording,
   onTranscribe,
   onCleanup,
+  onOpen,
 }: {
   recording: Recording;
   onTranscribe: () => void;
   onCleanup: () => void;
+  onOpen: () => void;
 }) {
   const [showRaw, setShowRaw] = useState(false);
 
@@ -115,14 +124,19 @@ function Content({
           <Toggle label="Clean" active={!showRaw} onPress={() => setShowRaw(false)} />
           <Toggle label="Raw" active={showRaw} onPress={() => setShowRaw(true)} />
         </View>
-        {showRaw ? (
-          <Text style={styles.rawTxt}>{recording.transcript}</Text>
-        ) : (
-          <View>
-            {!!recording.title && <Text style={styles.pageTitle}>{recording.title}</Text>}
-            <Text style={styles.pageBody}>{recording.bodyClean}</Text>
-          </View>
-        )}
+        <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel="Open page">
+          {showRaw ? (
+            <Text style={styles.rawTxt}>{recording.transcript}</Text>
+          ) : (
+            <View>
+              {!!recording.title && <Text style={styles.pageTitle}>{recording.title}</Text>}
+              <Text style={styles.pageBody} numberOfLines={6}>
+                {recording.bodyClean}
+              </Text>
+            </View>
+          )}
+          <Text style={styles.openHint}>Tap to read ›</Text>
+        </Pressable>
       </Box>
     );
   }
@@ -291,6 +305,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: colors.ink,
+  },
+  openHint: {
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.accent,
   },
   errorTxt: {
     fontSize: 14,

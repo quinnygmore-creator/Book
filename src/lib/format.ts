@@ -13,3 +13,13 @@ export function formatDate(iso: string): string {
   const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   return `${date} · ${time}`;
 }
+
+/** Format an ISO date as "Tuesday, June 3" — for the page header. */
+export function formatLongDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+}

@@ -4,6 +4,7 @@ import { useRecorder } from '../hooks/useRecorder';
 import { usePlayer } from '../hooks/usePlayer';
 import { RecordButton } from '../components/RecordButton';
 import { RecordingItem } from '../components/RecordingItem';
+import { Reader } from '../components/Reader';
 import {
   deleteRecording,
   listRecordings,
@@ -30,6 +31,7 @@ export function BookScreen({ book, onBack }: Props) {
   const { status, durationMillis, start, stop } = useRecorder();
   const { playingId, play, stop: stopPlayback } = usePlayer();
   const [entries, setEntries] = useState<Recording[]>([]);
+  const [readerIndex, setReaderIndex] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     setEntries(await listRecordings(book.id));
@@ -172,9 +174,20 @@ export function BookScreen({ book, onBack }: Props) {
             onDelete={() => handleDelete(item)}
             onTranscribe={() => runTranscription(item)}
             onCleanup={() => runCleanupFor(item.id, item.transcript ?? '')}
+            onOpen={() => setReaderIndex(index)}
           />
         )}
       />
+
+      {readerIndex !== null && (
+        <Reader
+          visible
+          book={book}
+          entries={entries}
+          initialIndex={readerIndex}
+          onClose={() => setReaderIndex(null)}
+        />
+      )}
 
       <View style={styles.footer}>
         <Text style={styles.statusText}>

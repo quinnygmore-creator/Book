@@ -4,6 +4,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Book } from '../types/book';
+import { DEFAULT_THEME, ThemeId } from '../theme/themes';
 
 const KEY = 'books.books.v1';
 
@@ -28,6 +29,7 @@ export async function createBook(title: string): Promise<Book> {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     title: title.trim(),
     coverEmoji: EMOJIS[books.length % EMOJIS.length],
+    theme: DEFAULT_THEME,
     createdAt: now,
     updatedAt: now,
   };
@@ -47,4 +49,14 @@ export async function renameBook(id: string, title: string): Promise<void> {
 export async function deleteBook(id: string): Promise<void> {
   const books = await listBooks();
   await writeAll(books.filter((b) => b.id !== id));
+}
+
+/** Persist the reading theme chosen for a book. */
+export async function setBookTheme(id: string, theme: ThemeId): Promise<void> {
+  const books = await listBooks();
+  await writeAll(
+    books.map((b) =>
+      b.id === id ? { ...b, theme, updatedAt: new Date().toISOString() } : b
+    )
+  );
 }
